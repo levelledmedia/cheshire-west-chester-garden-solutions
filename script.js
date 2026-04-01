@@ -376,7 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // ========================================
   // Carousel Helpers
   // ========================================
-  function createInfiniteCarousel({ track, prevButton, nextButton, slideSelector }) {
+  function createInfiniteCarousel({ track, prevButton, nextButton, slideSelector, autoPlayMs = 0 }) {
     if (!track || !prevButton || !nextButton) return;
     if (track.dataset.carouselInitialized === 'true') return;
 
@@ -477,14 +477,43 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     };
 
-    nextButton.addEventListener('click', () => slideBy(1));
-    prevButton.addEventListener('click', () => slideBy(-1));
+    // Auto-play support
+    let autoPlayInterval = null;
+    let autoPlayStopped = false;
+
+    const stopAutoPlay = () => {
+      clearInterval(autoPlayInterval);
+      autoPlayInterval = null;
+    };
+
+    const startAutoPlay = () => {
+      if (!autoPlayMs || autoPlayStopped) return;
+      stopAutoPlay();
+      autoPlayInterval = setInterval(() => slideBy(1), autoPlayMs);
+    };
+
+    if (autoPlayMs) {
+      const carouselContainer = track.parentElement;
+      carouselContainer.addEventListener('mouseenter', stopAutoPlay);
+      carouselContainer.addEventListener('mouseleave', startAutoPlay);
+    }
+
+    nextButton.addEventListener('click', () => {
+      if (autoPlayMs) { autoPlayStopped = true; stopAutoPlay(); }
+      slideBy(1);
+    });
+    prevButton.addEventListener('click', () => {
+      if (autoPlayMs) { autoPlayStopped = true; stopAutoPlay(); }
+      slideBy(-1);
+    });
     track.addEventListener('transitionend', handleTransitionEnd);
 
     window.addEventListener('resize', () => {
       isTransitioning = false;
       updatePosition(false);
     });
+
+    if (autoPlayMs) startAutoPlay();
   }
 
   // ========================================
@@ -498,7 +527,8 @@ document.addEventListener('DOMContentLoaded', function() {
     track: servicesTrack,
     prevButton: servicesPrev,
     nextButton: servicesNext,
-    slideSelector: '.service-card'
+    slideSelector: '.service-card',
+    autoPlayMs: 5000
   });
 
   // Add drag-to-scroll for services carousel
